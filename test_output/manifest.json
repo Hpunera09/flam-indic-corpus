@@ -1,0 +1,43 @@
+{
+  "pipeline_version": "1.0.0",
+  "run_timestamp": "2026-10-16T20:35:50+0530",
+  "raw_dir": "test_data",
+  "out_dir": "test_output",
+  "input_file_hashes": {
+    "test.jsonl": "1456ae3e5df7d53682663fa99fe3622bb69f77422d7382952e0572fab8ae440e"
+  },
+  "thresholds": {
+    "near_dup_jaccard": 0.8,
+    "minhash_num_perm": 128,
+    "min_text_chars": 20,
+    "min_words": 3,
+    "devanagari_ratio_for_hi": 0.3,
+    "hinglish_marker_ratio": 0.15
+  },
+  "counts": {
+    "per_stage": {
+      "total_input": 33,
+      "skipped_malformed": 0,
+      "skipped_restart": 33,
+      "dropped_normalize": 0,
+      "dropped_lang": 0,
+      "dropped_quality": 0,
+      "dropped_dedup_exact": 0,
+      "dropped_dedup_near": 0,
+      "kept": 0,
+      "pii_redacted": 0
+    },
+    "per_language_detected": {
+      "hi": 0,
+      "hi-Latn": 0,
+      "en": 0,
+      "other": 0
+    },
+    "dedup": {
+      "exact_duplicates": 0,
+      "near_duplicates": 0,
+      "unique_documents": 22
+    }
+  },
+  "elapsed_seconds": 0.09815239906311035
+}

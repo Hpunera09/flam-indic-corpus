@@ -1,0 +1,33 @@
+{"id": "test.jsonl:1", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:2", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:3", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:4", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:5", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:6", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:7", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:8", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:9", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:10", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:11", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:12", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:13", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:14", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:15", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:16", "status": "dropped", "stage": "read", "reason": "empty_text"}
+{"id": "test.jsonl:17", "status": "dropped", "stage": "read", "reason": "empty_text"}
+{"id": "test.jsonl:18", "status": "dropped", "stage": "quality", "reason": "html_markup:8_tags"}
+{"id": "test.jsonl:19", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:20", "status": "dropped", "stage": "dedup", "reason": "exact", "dup_of": "test.jsonl:1"}
+{"id": "test.jsonl:21", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:22", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:23", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:24", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:25", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:26", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:27", "status": "kept", "stage": "output", "reason": "passed"}
+{"id": "test.jsonl:28", "status": "dropped", "stage": "lang_detect", "reason": "other_lang:1.00"}
+{"id": "test.jsonl:29", "status": "dropped", "stage": "lang_detect", "reason": "other_lang:0.00"}
+{"id": "test.jsonl:30", "status": "dropped", "stage": "read", "reason": "json_decode_error: Unterminated string starting at: line 1 column 2 (char 1)"}
+{"id": "test.jsonl:31", "status": "dropped", "stage": "quality", "reason": "too_short:19_chars"}
+{"id": "test.jsonl:32", "status": "dropped", "stage": "lang_detect", "reason": "other_lang:0.00"}
+{"id": "test.jsonl:33", "status": "dropped", "stage": "dedup", "reason": "near:0.945", "dup_of": "test.jsonl:1"}
