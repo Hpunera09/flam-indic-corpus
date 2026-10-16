@@ -19,7 +19,10 @@ Write-Host "============================================"
 # Step 0: Install dependencies
 Write-Host ""
 Write-Host "[Step 0] Installing dependencies..."
-pip install -q -r "$ScriptDir\requirements.txt" 2>$null
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+python -m pip install -q -r "$ScriptDir\requirements.txt" *>$null
+$ErrorActionPreference = $prevEAP
 
 # Step 1: Run cleaning pipeline
 Write-Host ""

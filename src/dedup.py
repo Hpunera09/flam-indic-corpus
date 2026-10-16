@@ -47,13 +47,13 @@ def compute_minhash(text: str, num_perm: int = MINHASH_NUM_PERM,
                     ngram_size: int = MINHASH_NGRAM_SIZE) -> MinHash:
     """
     Compute MinHash signature for near-duplicate detection.
-    Uses character n-grams to be script-agnostic.
+    Uses unique character n-grams with update_batch for high throughput.
     """
     m = MinHash(num_perm=num_perm)
-    # Generate character n-grams
-    for i in range(len(text) - ngram_size + 1):
-        ngram = text[i:i + ngram_size]
-        m.update(ngram.encode("utf-8"))
+    if len(text) >= ngram_size:
+        unique_ngrams = list({text[i:i + ngram_size].encode("utf-8") 
+                              for i in range(len(text) - ngram_size + 1)})
+        m.update_batch(unique_ngrams)
     return m
 
 
