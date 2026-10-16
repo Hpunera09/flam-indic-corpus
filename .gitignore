@@ -1,7 +1,7 @@
 # Data directories
 raw/
-output/
 data/
+test_output/
 
 # Python
 __pycache__/

@@ -1,0 +1,46 @@
+{
+  "pipeline_version": "1.0.0",
+  "git_commit": "3d808154f2ddae683be0f0c0924b336fea45b144",
+  "run_timestamp": "2026-10-16T20:53:59+0530",
+  "raw_dir": "raw",
+  "out_dir": "output",
+  "input_file_hashes": {
+    "hindi_wiki.jsonl": "812f5a26e7e57f9b5b8edd370222c4785af54e126e50133e1bc13a3ae9cbfddd",
+    "SOURCE.json": "9c9f307d7ea57a33ab180392eb978740bdf45b707c4c5d542f02850c906559c4",
+    "hinglish.jsonl": "7c87af9de1a1e24fb13a432d6d6ff30621ef7100bdee80e63f39ab89ec85034b"
+  },
+  "thresholds": {
+    "near_dup_jaccard": 0.8,
+    "minhash_num_perm": 128,
+    "min_text_chars": 20,
+    "min_words": 3,
+    "devanagari_ratio_for_hi": 0.3,
+    "hinglish_marker_ratio": 0.15
+  },
+  "counts": {
+    "per_stage": {
+      "total_input": 14000,
+      "skipped_malformed": 0,
+      "skipped_restart": 0,
+      "dropped_normalize": 1,
+      "dropped_lang": 0,
+      "dropped_quality": 184,
+      "dropped_dedup_exact": 224,
+      "dropped_dedup_near": 1455,
+      "kept": 12136,
+      "pii_redacted": 13
+    },
+    "per_language_detected": {
+      "hi": 10970,
+      "hi-Latn": 2802,
+      "en": 227,
+      "other": 0
+    },
+    "dedup": {
+      "exact_duplicates": 224,
+      "near_duplicates": 1455,
+      "unique_documents": 12136
+    }
+  },
+  "elapsed_seconds": 97.07475328445435
+}
