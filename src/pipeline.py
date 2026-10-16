@@ -44,9 +44,30 @@ from src.pii import redact_pii
 STAGES = ["read", "normalize", "lang_detect", "quality", "dedup", "pii", "output"]
 
 
+def _extract_text(obj: Any) -> str:
+    """Robustly extract text content from arbitrary dict schemas."""
+    if isinstance(obj, str):
+        return obj
+    if isinstance(obj, dict):
+        for k in ("text", "content", "body", "sentence", "utterance", "message",
+                  "prompt", "response", "tweet", "query", "data", "review", "comment"):
+            v = obj.get(k)
+            if isinstance(v, str) and v.strip():
+                return v
+        if "translation" in obj and isinstance(obj["translation"], dict):
+            trans = obj["translation"]
+            for tk in ("hi_ng", "hi", "text", "en"):
+                if isinstance(trans.get(tk), str) and trans[tk].strip():
+                    return trans[tk]
+        for k, v in obj.items():
+            if isinstance(v, str) and len(v.strip()) >= 10:
+                return v
+    return ""
+
+
 def stream_raw_documents(raw_dir: str) -> Iterator[Dict[str, Any]]:
     """
-    Stream documents from raw directory.
+    Stream documents from raw directory or single input file.
     
     Supports:
     - .jsonl and .jsonl.gz files (one JSON object per line)
@@ -60,11 +81,14 @@ def stream_raw_documents(raw_dir: str) -> Iterator[Dict[str, Any]]:
     raw_path = Path(raw_dir)
     
     if not raw_path.exists():
-        print(f"ERROR: Raw directory does not exist: {raw_dir}", file=sys.stderr)
+        print(f"ERROR: Raw path does not exist: {raw_dir}", file=sys.stderr)
         return
 
-    # Sort files for deterministic ordering
-    files = sorted(raw_path.rglob("*"))
+    # Support single file input or directory
+    if raw_path.is_file():
+        files = [raw_path]
+    else:
+        files = sorted(raw_path.rglob("*"))
     
     for filepath in files:
         if filepath.is_dir() or filepath.name.startswith("SOURCE.") or filepath.name.startswith("metadata."):
@@ -103,24 +127,14 @@ def _stream_jsonl(filepath: Path, source_name: str) -> Iterator[Dict]:
                     continue
                 try:
                     obj = json.loads(line)
-                    if isinstance(obj, dict):
-                        text = obj.get("text", obj.get("content", obj.get("body", "")))
-                        yield {
-                            "text": str(text) if text else "",
-                            "source_file": str(filepath.name),
-                            "source_name": source_name,
-                            "line_num": line_num,
-                            "original_meta": {k: v for k, v in obj.items() 
-                                             if k not in ("text", "content", "body")},
-                        }
-                    else:
-                        yield {
-                            "text": str(obj),
-                            "source_file": str(filepath.name),
-                            "source_name": source_name,
-                            "line_num": line_num,
-                            "original_meta": {},
-                        }
+                    text = _extract_text(obj)
+                    yield {
+                        "text": text,
+                        "source_file": str(filepath.name),
+                        "source_name": source_name,
+                        "line_num": line_num,
+                        "original_meta": obj if isinstance(obj, dict) else {},
+                    }
                 except json.JSONDecodeError as e:
                     yield {
                         "text": "",
@@ -149,24 +163,14 @@ def _stream_jsonl_gz(filepath: Path, source_name: str) -> Iterator[Dict]:
                     continue
                 try:
                     obj = json.loads(line)
-                    if isinstance(obj, dict):
-                        text = obj.get("text", obj.get("content", obj.get("body", "")))
-                        yield {
-                            "text": str(text) if text else "",
-                            "source_file": str(filepath.name),
-                            "source_name": source_name,
-                            "line_num": line_num,
-                            "original_meta": {k: v for k, v in obj.items()
-                                             if k not in ("text", "content", "body")},
-                        }
-                    else:
-                        yield {
-                            "text": str(obj),
-                            "source_file": str(filepath.name),
-                            "source_name": source_name,
-                            "line_num": line_num,
-                            "original_meta": {},
-                        }
+                    text = _extract_text(obj)
+                    yield {
+                        "text": text,
+                        "source_file": str(filepath.name),
+                        "source_name": source_name,
+                        "line_num": line_num,
+                        "original_meta": obj if isinstance(obj, dict) else {},
+                    }
                 except json.JSONDecodeError as e:
                     yield {
                         "text": "",
@@ -186,40 +190,29 @@ def _stream_jsonl_gz(filepath: Path, source_name: str) -> Iterator[Dict]:
 
 
 def _stream_json(filepath: Path, source_name: str) -> Iterator[Dict]:
-    """Stream from a JSON file (array of objects)."""
+    """Stream from a JSON file (array of objects or single dict)."""
     try:
         with open(filepath, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
         data = json.loads(content)
         if isinstance(data, list):
             for i, obj in enumerate(data, 1):
-                if isinstance(obj, dict):
-                    text = obj.get("text", obj.get("content", obj.get("body", "")))
-                    yield {
-                        "text": str(text) if text else "",
-                        "source_file": str(filepath.name),
-                        "source_name": source_name,
-                        "line_num": i,
-                        "original_meta": {k: v for k, v in obj.items()
-                                         if k not in ("text", "content", "body")},
-                    }
-                else:
-                    yield {
-                        "text": str(obj),
-                        "source_file": str(filepath.name),
-                        "source_name": source_name,
-                        "line_num": i,
-                        "original_meta": {},
-                    }
+                text = _extract_text(obj)
+                yield {
+                    "text": text,
+                    "source_file": str(filepath.name),
+                    "source_name": source_name,
+                    "line_num": i,
+                    "original_meta": obj if isinstance(obj, dict) else {},
+                }
         elif isinstance(data, dict):
-            text = data.get("text", data.get("content", data.get("body", "")))
+            text = _extract_text(data)
             yield {
-                "text": str(text) if text else "",
+                "text": text,
                 "source_file": str(filepath.name),
                 "source_name": source_name,
                 "line_num": 1,
-                "original_meta": {k: v for k, v in data.items()
-                                 if k not in ("text", "content", "body")},
+                "original_meta": data,
             }
     except Exception as e:
         yield {
@@ -260,17 +253,13 @@ def _stream_csv(filepath: Path, source_name: str, delimiter: str = ",") -> Itera
         with open(filepath, "r", encoding="utf-8", errors="replace") as f:
             reader = csv.DictReader(f, delimiter=delimiter)
             for line_num, row in enumerate(reader, 2):  # 2 because header is line 1
-                # Look for text column
-                text = (row.get("text") or row.get("content") or 
-                        row.get("body") or row.get("sentence") or
-                        row.get("Text") or row.get("Content") or "")
+                text = _extract_text(row)
                 yield {
-                    "text": str(text),
+                    "text": text,
                     "source_file": str(filepath.name),
                     "source_name": source_name,
                     "line_num": line_num,
-                    "original_meta": {k: v for k, v in row.items() 
-                                     if k.lower() not in ("text", "content", "body", "sentence")},
+                    "original_meta": row,
                 }
     except Exception as e:
         yield {
@@ -605,12 +594,19 @@ def _build_manifest(raw_dir: str, out_dir: str, counts: dict,
     """Build the manifest.json with all metadata."""
     # Hash input files
     input_hashes = {}
-    for filepath in sorted(Path(raw_dir).rglob("*")):
-        if filepath.is_file():
-            try:
-                input_hashes[str(filepath.name)] = compute_file_hash(str(filepath))
-            except Exception:
-                input_hashes[str(filepath.name)] = "error_computing_hash"
+    raw_p = Path(raw_dir)
+    if raw_p.is_file():
+        try:
+            input_hashes[str(raw_p.name)] = compute_file_hash(str(raw_p))
+        except Exception:
+            input_hashes[str(raw_p.name)] = "error_computing_hash"
+    else:
+        for filepath in sorted(raw_p.rglob("*")):
+            if filepath.is_file():
+                try:
+                    input_hashes[str(filepath.name)] = compute_file_hash(str(filepath))
+                except Exception:
+                    input_hashes[str(filepath.name)] = "error_computing_hash"
 
     return {
         "pipeline_version": "1.0.0",

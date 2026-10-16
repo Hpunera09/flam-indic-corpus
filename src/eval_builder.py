@@ -101,6 +101,10 @@ def build_eval_set(clean_dir: str, out_dir: str, target_size: int = TARGET_EVAL_
         overflow = eval_items[target_size:]
         training_items.extend(overflow)
         eval_items = eval_items[:target_size]
+    elif not eval_items and all_docs:
+        # Ensure small messy test sets still get an eval item
+        eval_items.append(all_docs[0])
+        training_items = [d for d in all_docs if d.get("text") != all_docs[0].get("text")]
     
     # Write eval.jsonl
     eval_path = os.path.join(out_dir, "eval.jsonl")
