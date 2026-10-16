@@ -67,7 +67,7 @@ def stream_raw_documents(raw_dir: str) -> Iterator[Dict[str, Any]]:
     files = sorted(raw_path.rglob("*"))
     
     for filepath in files:
-        if filepath.is_dir():
+        if filepath.is_dir() or filepath.name.startswith("SOURCE.") or filepath.name.startswith("metadata."):
             continue
         
         suffix = filepath.suffix.lower()
@@ -374,6 +374,7 @@ class OutputWriter:
             self._counts[lang] = 0
 
         output_record = {
+            "id": doc.get("id", f"{doc.get('source_file', 'unknown')}:{doc.get('line_num', 0)}"),
             "text": doc["text"],
             "lang": lang,
             "source": doc.get("source_name", doc.get("source_file", "unknown")),
@@ -519,6 +520,7 @@ def run_pipeline(raw_dir: str, out_dir: str):
 
         # Stage 7: Write output
         doc["text"] = redacted_text
+        doc["id"] = doc_id
         writer.write(doc, lang)
         counts["kept"] += 1
         ledger.record(doc_id, "kept", "output", "passed")
@@ -589,6 +591,14 @@ def _rebuild_dedup_from_output(clean_dir: str, dedup_idx: DedupIndex):
             continue
 
 
+def _get_git_commit() -> str:
+    try:
+        import subprocess
+        return subprocess.check_output(["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL).decode().strip()
+    except Exception:
+        return "unknown"
+
+
 def _build_manifest(raw_dir: str, out_dir: str, counts: dict, 
                     lang_counts: dict, dedup_idx: DedupIndex,
                     elapsed: float) -> dict:
@@ -604,6 +614,7 @@ def _build_manifest(raw_dir: str, out_dir: str, counts: dict,
 
     return {
         "pipeline_version": "1.0.0",
+        "git_commit": _get_git_commit(),
         "run_timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "raw_dir": raw_dir,
         "out_dir": out_dir,

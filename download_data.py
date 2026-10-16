@@ -17,7 +17,7 @@ import sys
 from datetime import datetime, timezone
 
 
-def download_hindi_wiki(raw_dir: str, max_docs: int = 12000):
+def download_hindi_wiki(raw_dir: str, max_docs: int = 11000):
     """Download Hindi Wikipedia articles."""
     out_dir = os.path.join(raw_dir, "hindi_wiki")
     os.makedirs(out_dir, exist_ok=True)
@@ -58,7 +58,7 @@ def download_hindi_wiki(raw_dir: str, max_docs: int = 12000):
                     }
                     f.write(json.dumps(doc, ensure_ascii=False) + "\n")
                     count += 1
-                    if count % 2000 == 0:
+                    if count % 1000 == 0:
                         print(f"    {count} articles...", file=sys.stderr)
                     if count >= max_docs:
                         break
@@ -86,8 +86,8 @@ def download_hindi_wiki(raw_dir: str, max_docs: int = 12000):
     return 0
 
 
-def download_hinglish(raw_dir: str, target: int = 2000):
-    """Download Hinglish/Hindi-Latin data."""
+def download_hinglish(raw_dir: str, target: int = 3000):
+    """Download Hinglish/Hindi-Latin data from verified open HuggingFace sources."""
     out_dir = os.path.join(raw_dir, "hinglish")
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "hinglish.jsonl")
@@ -104,39 +104,65 @@ def download_hinglish(raw_dir: str, target: int = 2000):
     count = 0
     sources_tried = []
     
-    # Source 1: Google Dakshina - Hindi in Latin script
+    # Source 1: findnitai/english-to-hinglish (189k conversational Hinglish sentences)
     print("Downloading Hinglish data...")
     try:
-        print("  Trying Google Dakshina...")
-        ds = load_dataset("google/dakshina", "hi", trust_remote_code=True)
-        
+        print("  Trying findnitai/english-to-hinglish...")
+        ds = load_dataset("findnitai/english-to-hinglish", split="train", streaming=True)
+        added = 0
         with open(out_path, "w", encoding="utf-8") as f:
-            for split_name in ["train", "validation", "test"]:
-                if split_name in ds:
-                    for item in ds[split_name]:
-                        # Dakshina has 'latin' and 'native' fields
-                        latin = item.get("latin", item.get("romanized", ""))
-                        if latin and len(latin.strip()) > 10:
-                            doc = {
-                                "text": latin,
-                                "native": item.get("native", item.get("devanagari", "")),
-                                "source": "dakshina",
-                            }
-                            f.write(json.dumps(doc, ensure_ascii=False) + "\n")
-                            count += 1
-        
-        sources_tried.append({"name": "dakshina", "count": count, "success": True})
-        print(f"  Dakshina: {count} items")
+            for item in ds:
+                trans = item.get("translation", {})
+                hinglish = trans.get("hi_ng", "")
+                if hinglish and len(hinglish.strip()) >= 20:
+                    doc = {
+                        "text": hinglish.strip(),
+                        "en": trans.get("en", ""),
+                        "source": "findnitai/english-to-hinglish",
+                    }
+                    f.write(json.dumps(doc, ensure_ascii=False) + "\n")
+                    count += 1
+                    added += 1
+                    if added >= 2000:
+                        break
+        sources_tried.append({"name": "findnitai/english-to-hinglish", "count": added, "success": True})
+        print(f"  findnitai: {added} items")
     except Exception as e:
-        sources_tried.append({"name": "dakshina", "count": 0, "success": False, "error": str(e)})
-        print(f"  Dakshina failed: {e}", file=sys.stderr)
+        sources_tried.append({"name": "findnitai/english-to-hinglish", "count": 0, "success": False, "error": str(e)})
+        print(f"  findnitai failed: {e}", file=sys.stderr)
 
-    # Source 2: Try IITB Hinglish or similar
+    # Source 2: WillHeld/hinglish_top (task-oriented code-switched queries)
+    try:
+        print("  Trying WillHeld/hinglish_top...")
+        ds = load_dataset("WillHeld/hinglish_top", split="train", streaming=True)
+        mode = "a" if count > 0 else "w"
+        added = 0
+        with open(out_path, mode, encoding="utf-8") as f:
+            for item in ds:
+                cs_query = item.get("cs_query", "")
+                if cs_query and len(cs_query.strip()) >= 15:
+                    doc = {
+                        "text": cs_query.strip(),
+                        "en": item.get("en_query", ""),
+                        "domain": item.get("domain", ""),
+                        "source": "WillHeld/hinglish_top",
+                    }
+                    f.write(json.dumps(doc, ensure_ascii=False) + "\n")
+                    count += 1
+                    added += 1
+                    if added >= 1000:
+                        break
+        sources_tried.append({"name": "WillHeld/hinglish_top", "count": added, "success": True})
+        print(f"  WillHeld/hinglish_top: {added} items (total: {count})")
+    except Exception as e:
+        sources_tried.append({"name": "WillHeld/hinglish_top", "count": 0, "success": False, "error": str(e)})
+        print(f"  WillHeld/hinglish_top failed: {e}", file=sys.stderr)
+
+    # Source 3 fallback: festvox/cmu_hinglish_dog
     if count < target:
         try:
-            print("  Trying cmu_hinglish_dog...")
-            ds = load_dataset("cmu_hinglish_dog", split="train", trust_remote_code=True)
-            
+            print("  Trying festvox/cmu_hinglish_dog...")
+            ds = load_dataset("festvox/cmu_hinglish_dog", split="train", streaming=True)
             mode = "a" if count > 0 else "w"
             added = 0
             with open(out_path, mode, encoding="utf-8") as f:
@@ -146,55 +172,31 @@ def download_hinglish(raw_dir: str, target: int = 2000):
                         if content:
                             if isinstance(content, list):
                                 for utt in content:
-                                    if isinstance(utt, str) and len(utt.strip()) > 10:
-                                        doc = {"text": utt, "source": "cmu_hinglish_dog"}
+                                    if isinstance(utt, str) and len(utt.strip()) > 15:
+                                        doc = {"text": utt.strip(), "source": "festvox/cmu_hinglish_dog"}
                                         f.write(json.dumps(doc, ensure_ascii=False) + "\n")
                                         count += 1
                                         added += 1
-                            elif isinstance(content, str) and len(content.strip()) > 10:
-                                doc = {"text": content, "source": "cmu_hinglish_dog"}
+                            elif isinstance(content, str) and len(content.strip()) > 15:
+                                doc = {"text": content.strip(), "source": "festvox/cmu_hinglish_dog"}
                                 f.write(json.dumps(doc, ensure_ascii=False) + "\n")
                                 count += 1
                                 added += 1
                             break
-            
-            sources_tried.append({"name": "cmu_hinglish_dog", "count": added, "success": True})
-            print(f"  cmu_hinglish_dog: {added} items (total: {count})")
+            sources_tried.append({"name": "festvox/cmu_hinglish_dog", "count": added, "success": True})
+            print(f"  festvox/cmu_hinglish_dog: {added} items (total: {count})")
         except Exception as e:
-            sources_tried.append({"name": "cmu_hinglish_dog", "count": 0, "success": False, "error": str(e)})
-            print(f"  cmu_hinglish_dog failed: {e}", file=sys.stderr)
-
-    # Source 3: Try SemEval Hinglish sentiment dataset
-    if count < target:
-        try:
-            print("  Trying SemEval Hinglish sentiment...")
-            ds = load_dataset("Aman-J/Hinglish_Sentiment_Analysis", 
-                            split="train", trust_remote_code=True)
-            
-            mode = "a" if count > 0 else "w"
-            added = 0
-            with open(out_path, mode, encoding="utf-8") as f:
-                for item in ds:
-                    text = item.get("text", item.get("sentence", ""))
-                    if text and len(text.strip()) > 10:
-                        doc = {"text": text, "source": "hinglish_sentiment"}
-                        f.write(json.dumps(doc, ensure_ascii=False) + "\n")
-                        count += 1
-                        added += 1
-            
-            sources_tried.append({"name": "hinglish_sentiment", "count": added, "success": True})
-            print(f"  Hinglish sentiment: {added} items (total: {count})")
-        except Exception as e:
-            sources_tried.append({"name": "hinglish_sentiment", "count": 0, "success": False, "error": str(e)})
-            print(f"  Hinglish sentiment failed: {e}", file=sys.stderr)
+            sources_tried.append({"name": "festvox/cmu_hinglish_dog", "count": 0, "success": False, "error": str(e)})
+            print(f"  festvox/cmu_hinglish_dog failed: {e}", file=sys.stderr)
 
     # Write metadata
     meta = {
         "name": "Hinglish / Hindi-Latin script collection",
-        "sources_tried": sources_tried,
-        "license": "CC-BY-SA 4.0 (Dakshina), MIT (others)",
+        "sources": [s["name"] for s in sources_tried if s.get("success")],
+        "license": "CC-BY-4.0 / MIT / Research Open Access",
         "download_date": datetime.now(timezone.utc).isoformat(),
         "total_count": count,
+        "details": sources_tried,
     }
     with open(os.path.join(out_dir, "SOURCE.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
